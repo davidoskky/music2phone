@@ -47,6 +47,7 @@ class MusicSyncApp(App):
         self.phone_music_dir = await self.push_screen_wait(MountAndFolderPicker())
 
         self.library = core.get_library()
+        core.build_album_file_cache()
         artists = sorted(list(self.library.keys()))
         artists_list = self.query_one("#artists_list", ListView)
         for artist in artists:
