@@ -66,28 +66,26 @@ class MusicSyncTUI:
             dest_dir = os.path.join(PHONE_MUSIC_DIR, artist, album)
 
             if self.is_album_on_phone(artist, album):
-                # Remove from phone
-                result = subprocess.run(["rm", "-rf", dest_dir])
+                # Remove from phone using rsync --delete
+                import tempfile
+                with tempfile.TemporaryDirectory() as empty_dir:
+                    result = subprocess.run(["rsync", "-a", "--delete", f"{empty_dir}/", f"{dest_dir}/"])
                 if result.returncode == 0:
                     self.status_message = f"Removed '{album}' from phone."
                 else:
                     self.status_message = f"Error removing '{album}' from phone."
             else:
-                errors = []
-                for src_path in src_paths:
-                    if not os.path.exists(src_path):
-                        errors.append(f"Source not found: {src_path}")
-                        continue
-                    rel_path = os.path.relpath(src_path, os.path.commonpath(src_paths))
-                    dest_path = os.path.join(dest_dir, rel_path)
-                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-                    result = subprocess.run(["cp", src_path, dest_path])
-                    if result.returncode != 0:
-                        errors.append(f"Error copying {src_path}")
-                if errors:
-                    self.status_message = "; ".join(errors)
-                else:
+                # Sync to phone using rsync -a
+                if not src_paths:
+                    self.status_message = f"No source files found for '{album}'."
+                    return
+                src_root = os.path.commonpath(src_paths)
+                os.makedirs(dest_dir, exist_ok=True)
+                result = subprocess.run(["rsync", "-a", f"{src_root}/", f"{dest_dir}/"])
+                if result.returncode == 0:
                     self.status_message = f"Copied '{album}' to phone."
+                else:
+                    self.status_message = f"Error copying '{album}' to phone."
         except Exception as e:
             self.status_message = f"Error: {e}"
 
