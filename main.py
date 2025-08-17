@@ -17,6 +17,7 @@ else:
 
 # Configuration
 BEETS_LIBRARY = "~/.config/beets/library.db"  # Path to beets library
+MUSIC_LIBRARY_ROOT = "/home/davide/Musica"
 PHONE_MUSIC_DIR = "/tmp/"  # Mounted phone or remote dir
 
 
@@ -63,29 +64,85 @@ class MusicSyncTUI:
                 .strip()
                 .splitlines()
             )
-            dest_dir = os.path.join(PHONE_MUSIC_DIR, artist, album)
+            album_dirs = (
+                subprocess.check_output(
+                    [
+                        "beet",
+                        "list",
+                        "-af",
+                        "$albumpath",
+                        f"albumartist:{artist}",
+                        f"album:{album}",
+                    ],
+                    text=True,
+                )
+                .strip()
+                .splitlines()
+            )
+            album_dir = os.path.abspath(album_dirs[0]) if album_dirs else None
+            if not album_dir:
+                self.status_message = (
+                    f"Could not determine album directory for '{album}'."
+                )
+                return
+            # artist_dir = os.path.dirname(album_dir)
+            src_root = MUSIC_LIBRARY_ROOT
 
             if self.is_album_on_phone(artist, album):
-                # Remove from phone using rsync --delete
-                import tempfile
-                with tempfile.TemporaryDirectory() as empty_dir:
-                    result = subprocess.run(["rsync", "-a", "--delete", f"{empty_dir}/", f"{dest_dir}/"])
-                if result.returncode == 0:
-                    self.status_message = f"Removed '{album}' from phone."
-                else:
-                    self.status_message = f"Error removing '{album}' from phone."
-            else:
-                # Sync to phone using rsync -a
+                # Remove album files from phone by relative path
+                errors = []
                 if not src_paths:
                     self.status_message = f"No source files found for '{album}'."
                     return
-                src_root = os.path.commonpath(src_paths)
-                os.makedirs(dest_dir, exist_ok=True)
-                result = subprocess.run(["rsync", "-a", f"{src_root}/", f"{dest_dir}/"])
-                if result.returncode == 0:
-                    self.status_message = f"Copied '{album}' to phone."
+                for src_path in src_paths:
+                    rel_path = os.path.relpath(src_path, src_root)
+                    if rel_path.startswith(".."):
+                        errors.append(f"Unsafe rel_path: {rel_path}")
+                        continue
+                    dest_path = os.path.join(PHONE_MUSIC_DIR, rel_path)
+                    try:
+                        if os.path.exists(dest_path):
+                            os.remove(dest_path)
+                    except Exception as e:
+                        errors.append(f"Error removing {dest_path}: {e}")
+                if errors:
+                    self.status_message = "; ".join(errors)
                 else:
-                    self.status_message = f"Error copying '{album}' to phone."
+                    self.status_message = f"Removed '{album}' from phone."
+            else:
+                # Sync to phone using relative paths
+                if not src_paths:
+                    self.status_message = f"No source files found for '{album}'."
+                    return
+                errors = []
+                for src_path in src_paths:
+                    # Sanity check: src_path must start with src_root
+                    if (
+                        not os.path.commonpath([os.path.abspath(src_path), src_root])
+                        == src_root
+                    ):
+                        errors.append(
+                            f"src_path {src_path} does not start with src_root {src_root}"
+                        )
+                        continue
+                    rel_path = os.path.relpath(src_path, src_root)
+                    if rel_path.startswith(".."):
+                        errors.append(
+                            f"Unsafe rel_path: {rel_path} (src_path: {src_path}, src_root: {src_root})"
+                        )
+                        continue
+                    dest_path = os.path.join(PHONE_MUSIC_DIR, rel_path)
+                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                    try:
+                        result = subprocess.run(["cp", "-r", src_path, dest_path])
+                        if result.returncode != 0:
+                            errors.append(f"Error copying {src_path}")
+                    except Exception as e:
+                        errors.append(f"Error copying {src_path}: {e}")
+                if errors:
+                    self.status_message = "; ".join(errors)
+                else:
+                    self.status_message = f"Copied '{album}' to phone."
         except Exception as e:
             self.status_message = f"Error: {e}"
 
