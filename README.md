@@ -34,7 +34,14 @@ This tool is made for my own use case: I want an easy way to add albums on my ph
 ```bash
 git clone https://github.com/davidoskky/music2phone.git
 cd music2phone
-uv pip install -e .  # or your preferred uv command
+uv pip install -e .  # or you can use pip as well
+music2phone
+```
+
+Alternatively you can use uvx
+
+```bash
+uvx git+https://github.com/davidoskky/music2phone
 ```
 
 ## Usage
