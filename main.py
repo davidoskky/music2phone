@@ -42,9 +42,31 @@ class MusicSyncTUI:
             self.artist_albums = {"Error": ["Run 'beet update' first?"]}
 
     def is_album_on_phone(self, artist, album):
-        """Check if album exists on phone."""
-        phone_album_path = os.path.join(PHONE_MUSIC_DIR, artist, album)
-        return os.path.exists(phone_album_path)
+        """Check if all album files exist on phone."""
+        try:
+            src_paths = (
+                subprocess.check_output(
+                    [
+                        "beet",
+                        "list",
+                        "-af",
+                        "$path",
+                        f"albumartist:{artist}",
+                        f"album:{album}",
+                    ],
+                    text=True,
+                )
+                .strip()
+                .splitlines()
+            )
+            for src_path in src_paths:
+                rel_path = os.path.relpath(src_path, MUSIC_LIBRARY_ROOT)
+                phone_path = os.path.join(PHONE_MUSIC_DIR, rel_path)
+                if not os.path.exists(phone_path):
+                    return False
+            return True if src_paths else False
+        except Exception:
+            return False
 
     def toggle_album_sync(self, artist, album):
         """Copy/remove album to/from phone, with error handling and feedback."""
