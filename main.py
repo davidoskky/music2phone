@@ -1,6 +1,7 @@
 import curses
 import importlib.util
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -123,8 +124,11 @@ class MusicSyncTUI:
                         continue
                     dest_path = os.path.join(PHONE_MUSIC_DIR, rel_path)
                     try:
-                        if os.path.exists(dest_path):
+                        if os.path.isfile(dest_path):
                             os.remove(dest_path)
+                        elif os.path.isdir(dest_path):
+                            import shutil
+                            shutil.rmtree(dest_path)
                     except Exception as e:
                         errors.append(f"Error removing {dest_path}: {e}")
                 if errors:
