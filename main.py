@@ -5,15 +5,15 @@ import shutil
 import subprocess
 from pathlib import Path
 
+# dynamic import core module
 spec = importlib.util.spec_from_file_location(
-    "beets_info", os.path.join(os.path.dirname(__file__), "beets_info.py")
+    "core", os.path.join(os.path.dirname(__file__), "core.py")
 )
 if spec and spec.loader:
-    beets_info = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(beets_info)
-    get_beets_library = beets_info.get_beets_library
+    core = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(core)
 else:
-    raise ImportError("Could not import beets_info module")
+    raise ImportError("Could not import core module")
 
 
 # Configuration
@@ -38,7 +38,7 @@ class MusicSyncTUI:
     def load_library(self):
         """Load artists and albums from beets."""
         try:
-            self.artist_albums = get_beets_library()
+            self.artist_albums = core.get_library()
             self.artists = list(self.artist_albums.keys())
         except Exception as e:
             self.artists = ["Error loading library!"]
@@ -130,6 +130,7 @@ class MusicSyncTUI:
                             os.remove(dest_path)
                         elif os.path.isdir(dest_path):
                             import shutil
+
                             shutil.rmtree(dest_path)
                     except Exception as e:
                         errors.append(f"Error removing {dest_path}: {e}")
@@ -202,7 +203,9 @@ class MusicSyncTUI:
             end = min(len(albums), start + max_visible)
             for idx, album in enumerate(albums[start:end], start=start):
                 status = "[✓]" if self.is_album_on_phone(artist, album) else "[ ]"
-                line = f"{'→' if idx == self.selected_album_idx else ' '} {status} {album}"
+                line = (
+                    f"{'→' if idx == self.selected_album_idx else ' '} {status} {album}"
+                )
                 self.stdscr.addstr(idx - start + 3, 0, line[: w - 1])
 
         # Show status message at the bottom
@@ -245,7 +248,9 @@ class MusicSyncTUI:
                     elif self.selected_artist_idx >= self.artist_scroll + max_visible:
                         self.artist_scroll = self.selected_artist_idx - max_visible + 1
                 else:
-                    album_list = self.artist_albums.get(self.artists[self.selected_artist_idx], [])
+                    album_list = self.artist_albums.get(
+                        self.artists[self.selected_artist_idx], []
+                    )
                     self.selected_album_idx = min(
                         len(album_list) - 1, self.selected_album_idx + 1
                     )
