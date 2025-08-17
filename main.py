@@ -1,11 +1,10 @@
 import asyncio
-
+import os
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Label, ListItem, ListView
-
+from mount_folder_picker import MountAndFolderPicker
 import core
-
 
 class MusicSyncApp(App):
     CSS = """
@@ -23,20 +22,34 @@ class MusicSyncApp(App):
         self.library = {}
         self.selected_artist: str | None = None
         self.status_cache: dict[tuple[str, str], bool] = {}
+        self.music_dir = os.getenv("PHONE_MUSIC_DIR")
+        self.picker_done = False
 
     def compose(self) -> ComposeResult:
-        yield Horizontal(
-            Vertical(
-                Label("Artists", id="artists_label"),
-                ListView(id="artists_list"),
-            ),
-            Vertical(
-                Label("Albums", id="albums_label"),
-                ListView(id="albums_list"),
-            ),
-        )
+        if not self.music_dir and not self.picker_done:
+            yield MountAndFolderPicker()
+        else:
+            yield Horizontal(
+                Vertical(
+                    Label("Artists", id="artists_label"),
+                    ListView(id="artists_list"),
+                ),
+                Vertical(
+                    Label("Albums", id="albums_label"),
+                    ListView(id="albums_list"),
+                ),
+            )
+
+    def on_mountandfolderpicker_directorypicked(self, event):
+        self.music_dir = event.path
+        with open(".env", "a") as f:
+            f.write(f"PHONE_MUSIC_DIR={self.music_dir}\n")
+        self.picker_done = True
+        self.refresh()
 
     async def on_mount(self):
+        if not self.music_dir:
+            return  # Wait for picker
         self.library = core.get_library()
         artists = sorted(list(self.library.keys()))
         artists_list = self.query_one("#artists_list", ListView)
@@ -132,7 +145,6 @@ class MusicSyncApp(App):
 
 def main():
     MusicSyncApp().run()
-
 
 if __name__ == "__main__":
     main()
