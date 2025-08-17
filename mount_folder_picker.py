@@ -9,11 +9,6 @@ from textual.widgets import Label, ListItem, ListView
 from textual_fspicker import SelectDirectory
 
 
-def debug_log(msg):
-    with open("debug.log", "a") as f:
-        f.write(msg + "\n")
-
-
 def get_accessible_subdir(mount):
     candidates = [
         os.path.join(mount, "storage", "emulated", "0"),
@@ -42,25 +37,17 @@ class MountAndFolderPicker(Screen[str]):
         self.selected_mount = None
         self.directory_picker = None
         self.selected_path = None
-        debug_log("MountAndFolderPicker: Initiated mount picker")
 
     def compose(self) -> ComposeResult:
-        debug_log("MountAndFolderPicker: Composing mount list")
         yield Label("Select a mount point:")
         yield self.list_view
 
     @on(ListView.Selected)
     @work
     async def on_mount_selected(self, event: ListView.Selected):
-        try:
-            self.selected_mount = event.item.query_one(Label).renderable
-            debug_log(f"User selected mount: {self.selected_mount}")
-            accessible_root = get_accessible_subdir(self.selected_mount)
-            debug_log(f"Using accessible root: {accessible_root}")
-            directory = await self.app.push_screen_wait(
-                SelectDirectory(location=accessible_root)
-            )
-            debug_log(f"Got Directory: {directory}")
-            self.dismiss(directory)
-        except Exception as e:
-            debug_log(f"Exception in on_mount_selected: {e}")
+        self.selected_mount = event.item.query_one(Label).renderable
+        accessible_root = get_accessible_subdir(self.selected_mount)
+        directory = await self.app.push_screen_wait(
+            SelectDirectory(location=accessible_root)
+        )
+        self.dismiss(directory)

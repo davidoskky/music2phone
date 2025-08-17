@@ -5,9 +5,6 @@ from typing import Dict, List
 
 from beets_info import get_beets_library
 
-def debug_log(msg):
-    with open("debug.log", "a") as f:
-        f.write(msg + "\n")
 
 def get_beets_library_root() -> str:
     config = subprocess.check_output(["beet", "config", "-d"], text=True)
@@ -16,6 +13,7 @@ def get_beets_library_root() -> str:
             value = line.split(":", 1)[1].strip()
             return os.path.expanduser(value)
     raise RuntimeError("Could not find 'directory' in beets config")
+
 
 def get_library() -> Dict[str, List[str]]:
     """Return the mapping of artists to albums from beets library."""
@@ -50,10 +48,8 @@ def get_album_dir(artist: str, album: str) -> str:
 
 def is_album_synced(phone_dir: str, artist: str, album: str) -> bool:
     music_library_root = get_beets_library_root()
-    debug_log(f"is_album_synced: phone_dir={phone_dir}, artist={artist}, album={album}, music_library_root={music_library_root}")
     paths = get_album_paths(artist, album)
     if not paths:
-        debug_log("No album paths found.")
         return False
     for src_path in paths:
         rel_path = os.path.relpath(src_path, music_library_root)
@@ -67,7 +63,9 @@ def is_album_synced(phone_dir: str, artist: str, album: str) -> bool:
 
 def sync_album(phone_dir: str, artist: str, album: str) -> str:
     music_library_root = get_beets_library_root()
-    debug_log(f"sync_album: phone_dir={phone_dir}, artist={artist}, album={album}, music_library_root={music_library_root}")
+    debug_log(
+        f"sync_album: phone_dir={phone_dir}, artist={artist}, album={album}, music_library_root={music_library_root}"
+    )
     paths = get_album_paths(artist, album)
     if not paths:
         debug_log(f"No source files found for '{album}'.")
@@ -93,7 +91,9 @@ def sync_album(phone_dir: str, artist: str, album: str) -> str:
 
 def unsync_album(phone_dir: str, artist: str, album: str) -> str:
     music_library_root = get_beets_library_root()
-    debug_log(f"unsync_album: phone_dir={phone_dir}, artist={artist}, album={album}, music_library_root={music_library_root}")
+    debug_log(
+        f"unsync_album: phone_dir={phone_dir}, artist={artist}, album={album}, music_library_root={music_library_root}"
+    )
     paths = get_album_paths(artist, album)
     if not paths:
         debug_log(f"No source files found for '{album}'.")
