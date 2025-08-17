@@ -41,7 +41,19 @@ class MusicSyncApp(App):
         artists_list = self.query_one("#artists_list", ListView)
         for artist in artists:
             artists_list.append(ListItem(Label(artist)))
+        artists_list.index = 0
         artists_list.focus()
+        # show first artist's albums immediately
+        if artists:
+            self.selected_artist = artists[0]
+            albums_list = self.query_one("#albums_list", ListView)
+            albums_list.clear()
+            for album in self.library[self.selected_artist]:
+                status = "[✓]" if self.status_cache.get((self.selected_artist, album), False) else "[ ]"
+                albums_list.append(ListItem(Label(f"{status} {album}")))
+            albums_list.index = 0
+        # highlight first artist on mount
+        self.post_message(ListView.Highlighted(artists_list, artists_list.children[0]))
         asyncio.create_task(self._load_statuses())
 
     def on_list_view_selected(self, event: ListView.Selected):
@@ -54,7 +66,11 @@ class MusicSyncApp(App):
             for album in self.library.get(self.selected_artist, []):
                 status = "[✓]" if self.status_cache.get((self.selected_artist, album), False) else "[ ]"
                 albums_list.append(ListItem(Label(f"{status} {album}")))
+            albums_list.index = 0
+            albums_list.index = 0
             albums_list.focus()
+            # highlight first album on artist select
+            self.post_message(ListView.Highlighted(albums_list, albums_list.children[0]))
         elif view_id == "albums_list" and self.selected_artist:
             parts = item_label.split(" ", 2)
             album = parts[-1]
@@ -71,6 +87,14 @@ class MusicSyncApp(App):
                 albums_list.append(ListItem(Label(f"{status} {album}")))
 
     def on_list_view_highlighted(self, event: ListView.Highlighted):
+        try:
+            artist = event.item.query_one(Label).renderable
+        except Exception:
+            return
+        try:
+            artist = event.item.query_one(Label).renderable
+        except Exception:
+            return
         if event.list_view.id == "artists_list":
             artist = event.item.query_one(Label).renderable
             self.selected_artist = artist
