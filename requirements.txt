@@ -1,1 +1,2 @@
 textual>=0.5.3
+psutil>=5.9.0

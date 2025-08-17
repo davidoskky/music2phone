@@ -1,5 +1,4 @@
 import asyncio
-import os
 
 from textual import on, work
 from textual.app import App, ComposeResult
