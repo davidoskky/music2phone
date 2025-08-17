@@ -28,6 +28,7 @@ class MusicSyncTUI:
         self.selected_artist_idx = 0
         self.selected_album_idx = 0
         self.current_view = "artists"  # or "albums"
+        self.status_message = ""
         self.load_library()
 
     def load_library(self):
@@ -45,19 +46,50 @@ class MusicSyncTUI:
         return os.path.exists(phone_album_path)
 
     def toggle_album_sync(self, artist, album):
-        """Copy/remove album to/from phone."""
-        src_path = subprocess.check_output(
-            ["beet", "path", "-a", album], text=True
-        ).strip()
-        dest_path = os.path.join(PHONE_MUSIC_DIR, artist, album)
+        """Copy/remove album to/from phone, with error handling and feedback."""
+        try:
+            src_paths = (
+                subprocess.check_output(
+                    [
+                        "beet",
+                        "list",
+                        "-af",
+                        "$path",
+                        f"albumartist:{artist}",
+                        f"album:{album}",
+                    ],
+                    text=True,
+                )
+                .strip()
+                .splitlines()
+            )
+            dest_dir = os.path.join(PHONE_MUSIC_DIR, artist, album)
 
-        if self.is_album_on_phone(artist, album):
-            # Remove from phone
-            subprocess.run(["rm", "-rf", dest_path])
-        else:
-            # Copy to phone (create dir if needed)
-            os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-            subprocess.run(["cp", "-r", src_path, dest_path])
+            if self.is_album_on_phone(artist, album):
+                # Remove from phone
+                result = subprocess.run(["rm", "-rf", dest_dir])
+                if result.returncode == 0:
+                    self.status_message = f"Removed '{album}' from phone."
+                else:
+                    self.status_message = f"Error removing '{album}' from phone."
+            else:
+                errors = []
+                for src_path in src_paths:
+                    if not os.path.exists(src_path):
+                        errors.append(f"Source not found: {src_path}")
+                        continue
+                    rel_path = os.path.relpath(src_path, os.path.commonpath(src_paths))
+                    dest_path = os.path.join(dest_dir, rel_path)
+                    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                    result = subprocess.run(["cp", src_path, dest_path])
+                    if result.returncode != 0:
+                        errors.append(f"Error copying {src_path}")
+                if errors:
+                    self.status_message = "; ".join(errors)
+                else:
+                    self.status_message = f"Copied '{album}' to phone."
+        except Exception as e:
+            self.status_message = f"Error: {e}"
 
     def draw(self):
         self.stdscr.clear()
@@ -90,6 +122,9 @@ class MusicSyncTUI:
                 )
                 self.stdscr.addstr(idx + 3, 0, line[: w - 1])
 
+        # Show status message at the bottom
+        if hasattr(self, "status_message") and self.status_message:
+            self.stdscr.addstr(h - 1, 0, self.status_message[: w - 1], curses.A_REVERSE)
         self.stdscr.refresh()
 
     def run(self):
