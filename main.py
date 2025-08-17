@@ -2,6 +2,7 @@ from textual.app import App, ComposeResult
 from textual.widgets import ListView, ListItem, Label
 from textual.containers import Horizontal, Vertical
 
+import asyncio
 import core
 
 
@@ -20,6 +21,7 @@ class MusicSyncApp(App):
         super().__init__()
         self.library = {}
         self.selected_artist: str | None = None
+        self.status_cache: dict[tuple[str, str], bool] = {}
 
     def compose(self) -> ComposeResult:
         yield Horizontal(
@@ -33,13 +35,14 @@ class MusicSyncApp(App):
             ),
         )
 
-    def on_mount(self):
+    async def on_mount(self):
         self.library = core.get_library()
         artists = list(self.library.keys())
         artists_list = self.query_one("#artists_list", ListView)
         for artist in artists:
             artists_list.append(ListItem(Label(artist)))
         artists_list.focus()
+        asyncio.create_task(self._load_statuses())
 
     def on_list_view_selected(self, event: ListView.Selected):
         view_id = event.list_view.id
@@ -49,22 +52,24 @@ class MusicSyncApp(App):
             albums_list = self.query_one("#albums_list", ListView)
             albums_list.clear()
             for album in self.library.get(self.selected_artist, []):
-                status = "[✓]" if core.is_album_synced(self.selected_artist, album) else "[ ]"
+                status = "[✓]" if self.status_cache.get((self.selected_artist, album), False) else "[ ]"
                 albums_list.append(ListItem(Label(f"{status} {album}")))
             albums_list.focus()
         elif view_id == "albums_list" and self.selected_artist:
             parts = item_label.split(" ", 2)
             album = parts[-1]
-            if core.is_album_synced(self.selected_artist, album):
+            if self.status_cache.get((self.selected_artist, album), False):
                 core.unsync_album(self.selected_artist, album)
             else:
                 core.sync_album(self.selected_artist, album)
+            self.status_cache[(self.selected_artist, album)] = core.is_album_synced(self.selected_artist, album)
             # refresh album list
             albums_list = self.query_one("#albums_list", ListView)
             albums_list.clear()
             for album in self.library.get(self.selected_artist, []):
-                status = "[✓]" if core.is_album_synced(self.selected_artist, album) else "[ ]"
+                status = "[✓]" if self.status_cache.get((self.selected_artist, album), False) else "[ ]"
                 albums_list.append(ListItem(Label(f"{status} {album}")))
+
     def on_list_view_highlighted(self, event: ListView.Highlighted):
         if event.list_view.id == "artists_list":
             artist = event.item.query_one(Label).renderable
@@ -72,9 +77,25 @@ class MusicSyncApp(App):
             albums_list = self.query_one("#albums_list", ListView)
             albums_list.clear()
             for album in self.library.get(artist, []):
-                status = "[✓]" if core.is_album_synced(artist, album) else "[ ]"
+                status = "[✓]" if self.status_cache.get((artist, album), False) else "[ ]"
                 albums_list.append(ListItem(Label(f"{status} {album}")))
 
+    async def _load_statuses(self):
+        for artist, albums in self.library.items():
+            for album in albums:
+                status = await asyncio.to_thread(core.is_album_synced, artist, album)
+                self.status_cache[(artist, album)] = status
+                if self.selected_artist == artist:
+                    albums_list = self.query_one("#albums_list", ListView)
+                    for item in albums_list.children:
+                        try:
+                            label = item.query_one(Label)
+                        except Exception:
+                            continue
+                        text = label.renderable
+                        if text.endswith(album):
+                            prefix = "[✓]" if status else "[ ]"
+                            label.update(f"{prefix} {album}")
 
 
 def main():
