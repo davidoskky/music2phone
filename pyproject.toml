@@ -17,7 +17,7 @@ classifiers = [
 ]
 
 [tool.setuptools]
-py-modules = ["main","core","beets_info"]
+py-modules = ["main","core","beets_info", "mount_folder_picker"]
 
 [project.scripts]
 music2phone = "main:main"
