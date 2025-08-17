@@ -65,6 +65,16 @@ class MusicSyncApp(App):
             for album in self.library.get(self.selected_artist, []):
                 status = "[✓]" if core.is_album_synced(self.selected_artist, album) else "[ ]"
                 albums_list.append(ListItem(Label(f"{status} {album}")))
+    def on_list_view_highlighted(self, event: ListView.Highlighted):
+        if event.list_view.id == "artists_list":
+            artist = event.item.query_one(Label).renderable
+            self.selected_artist = artist
+            albums_list = self.query_one("#albums_list", ListView)
+            albums_list.clear()
+            for album in self.library.get(artist, []):
+                status = "[✓]" if core.is_album_synced(artist, album) else "[ ]"
+                albums_list.append(ListItem(Label(f"{status} {album}")))
+
 
 
 def main():
