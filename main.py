@@ -29,6 +29,8 @@ class MusicSyncTUI:
         self.artist_albums = {}
         self.selected_artist_idx = 0
         self.selected_album_idx = 0
+        self.artist_scroll = 0
+        self.album_scroll = 0
         self.current_view = "artists"  # or "albums"
         self.status_message = ""
         self.load_library()
@@ -182,11 +184,12 @@ class MusicSyncTUI:
 
         if self.current_view == "artists":
             # List artists
-            for idx, artist in enumerate(self.artists):
-                if idx + 2 >= h - 1:
-                    break
+            max_visible = h - 3
+            start = self.artist_scroll
+            end = min(len(self.artists), start + max_visible)
+            for idx, artist in enumerate(self.artists[start:end], start=start):
                 line = f"{'→' if idx == self.selected_artist_idx else ' '} {artist}"
-                self.stdscr.addstr(idx + 2, 0, line[: w - 1])
+                self.stdscr.addstr(idx - start + 2, 0, line[: w - 1])
         else:
             # List albums for selected artist
             artist = self.artists[self.selected_artist_idx]
@@ -194,14 +197,13 @@ class MusicSyncTUI:
 
             self.stdscr.addstr(1, 0, f"Artist: {artist}"[: w - 1], curses.A_BOLD)
 
-            for idx, album in enumerate(albums):
-                if idx + 3 >= h - 1:
-                    break
+            max_visible = h - 3
+            start = self.album_scroll
+            end = min(len(albums), start + max_visible)
+            for idx, album in enumerate(albums[start:end], start=start):
                 status = "[✓]" if self.is_album_on_phone(artist, album) else "[ ]"
-                line = (
-                    f"{'→' if idx == self.selected_album_idx else ' '} {status} {album}"
-                )
-                self.stdscr.addstr(idx + 3, 0, line[: w - 1])
+                line = f"{'→' if idx == self.selected_album_idx else ' '} {status} {album}"
+                self.stdscr.addstr(idx - start + 3, 0, line[: w - 1])
 
         # Show status message at the bottom
         if hasattr(self, "status_message") and self.status_message:
@@ -220,23 +222,38 @@ class MusicSyncTUI:
             elif key == curses.KEY_UP:
                 if self.current_view == "artists":
                     self.selected_artist_idx = max(0, self.selected_artist_idx - 1)
+                    max_visible = self.stdscr.getmaxyx()[0] - 3
+                    if self.selected_artist_idx < self.artist_scroll:
+                        self.artist_scroll = self.selected_artist_idx
+                    elif self.selected_artist_idx >= self.artist_scroll + max_visible:
+                        self.artist_scroll = self.selected_artist_idx - max_visible + 1
                 else:
                     self.selected_album_idx = max(0, self.selected_album_idx - 1)
+                    max_visible = self.stdscr.getmaxyx()[0] - 3
+                    if self.selected_album_idx < self.album_scroll:
+                        self.album_scroll = self.selected_album_idx
+                    elif self.selected_album_idx >= self.album_scroll + max_visible:
+                        self.album_scroll = self.selected_album_idx - max_visible + 1
             elif key == curses.KEY_DOWN:
                 if self.current_view == "artists":
                     self.selected_artist_idx = min(
                         len(self.artists) - 1, self.selected_artist_idx + 1
                     )
+                    max_visible = self.stdscr.getmaxyx()[0] - 3
+                    if self.selected_artist_idx < self.artist_scroll:
+                        self.artist_scroll = self.selected_artist_idx
+                    elif self.selected_artist_idx >= self.artist_scroll + max_visible:
+                        self.artist_scroll = self.selected_artist_idx - max_visible + 1
                 else:
+                    album_list = self.artist_albums.get(self.artists[self.selected_artist_idx], [])
                     self.selected_album_idx = min(
-                        len(
-                            self.artist_albums.get(
-                                self.artists[self.selected_artist_idx], []
-                            )
-                        )
-                        - 1,
-                        self.selected_album_idx + 1,
+                        len(album_list) - 1, self.selected_album_idx + 1
                     )
+                    max_visible = self.stdscr.getmaxyx()[0] - 3
+                    if self.selected_album_idx < self.album_scroll:
+                        self.album_scroll = self.selected_album_idx
+                    elif self.selected_album_idx >= self.album_scroll + max_visible:
+                        self.album_scroll = self.selected_album_idx - max_visible + 1
             elif key == curses.KEY_ENTER or key == 10:
                 if self.current_view == "artists":
                     self.current_view = "albums"
