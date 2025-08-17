@@ -16,3 +16,8 @@ classifiers = [
     "Operating System :: Linux",
 ]
 
+[tool.setuptools]
+py-modules = ["main","core","beets_info"]
+
+[project.scripts]
+music2phone = "main:main"
