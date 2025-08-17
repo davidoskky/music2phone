@@ -1,10 +1,14 @@
 import asyncio
 import os
+
+from textual import on, work
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Label, ListItem, ListView
-from mount_folder_picker import MountAndFolderPicker
+
 import core
+from mount_folder_picker import MountAndFolderPicker
+
 
 class MusicSyncApp(App):
     CSS = """
@@ -22,34 +26,27 @@ class MusicSyncApp(App):
         self.library = {}
         self.selected_artist: str | None = None
         self.status_cache: dict[tuple[str, str], bool] = {}
-        self.music_dir = os.getenv("PHONE_MUSIC_DIR")
+        self.phone_music_dir = ""
         self.picker_done = False
 
     def compose(self) -> ComposeResult:
-        if not self.music_dir and not self.picker_done:
-            yield MountAndFolderPicker()
-        else:
-            yield Horizontal(
-                Vertical(
-                    Label("Artists", id="artists_label"),
-                    ListView(id="artists_list"),
+        yield Horizontal(
+            Vertical(
+                Label(
+                    f"Artists (Music dir: {self.phone_music_dir})", id="artists_label"
                 ),
-                Vertical(
-                    Label("Albums", id="albums_label"),
-                    ListView(id="albums_list"),
-                ),
-            )
+                ListView(id="artists_list"),
+            ),
+            Vertical(
+                Label("Albums", id="albums_label"),
+                ListView(id="albums_list"),
+            ),
+        )
 
-    def on_mountandfolderpicker_directorypicked(self, event):
-        self.music_dir = event.path
-        with open(".env", "a") as f:
-            f.write(f"PHONE_MUSIC_DIR={self.music_dir}\n")
-        self.picker_done = True
-        self.refresh()
-
+    @work
     async def on_mount(self):
-        if not self.music_dir:
-            return  # Wait for picker
+        self.phone_music_dir = await self.push_screen_wait(MountAndFolderPicker())
+
         self.library = core.get_library()
         artists = sorted(list(self.library.keys()))
         artists_list = self.query_one("#artists_list", ListView)
@@ -95,13 +92,17 @@ class MusicSyncApp(App):
             parts = item_label.split(" ", 2)
             album = parts[-1]
             # Always check live status after operation
-            currently = core.is_album_synced(self.selected_artist, album)
+            currently = core.is_album_synced(
+                self.phone_music_dir, self.selected_artist, album
+            )
             if currently:
-                core.unsync_album(self.selected_artist, album)
+                core.unsync_album(self.phone_music_dir, self.selected_artist, album)
             else:
-                core.sync_album(self.selected_artist, album)
+                core.sync_album(self.phone_music_dir, self.selected_artist, album)
             # Re-check status after operation
-            status = core.is_album_synced(self.selected_artist, album)
+            status = core.is_album_synced(
+                self.phone_music_dir, self.selected_artist, album
+            )
             self.status_cache[(self.selected_artist, album)] = status
             # Update only the tick for this album
             albums_list = self.query_one("#albums_list", ListView)
@@ -129,7 +130,9 @@ class MusicSyncApp(App):
     async def _load_statuses(self):
         for artist, albums in self.library.items():
             for album in albums:
-                status = await asyncio.to_thread(core.is_album_synced, artist, album)
+                status = await asyncio.to_thread(
+                    core.is_album_synced, self.phone_music_dir, artist, album
+                )
                 self.status_cache[(artist, album)] = status
                 if self.selected_artist == artist:
                     albums_list = self.query_one("#albums_list", ListView)
@@ -145,6 +148,7 @@ class MusicSyncApp(App):
 
 def main():
     MusicSyncApp().run()
+
 
 if __name__ == "__main__":
     main()

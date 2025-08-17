@@ -3,7 +3,8 @@ import os
 import psutil
 from textual import on, work
 from textual.app import ComposeResult, Widget
-from textual.screen import Screen
+from textual.message import Message
+from textual.screen import ModalScreen, Screen
 from textual.widgets import Label, ListItem, ListView
 from textual_fspicker import SelectDirectory
 
@@ -25,7 +26,7 @@ def get_accessible_subdir(mount):
     return mount
 
 
-class MountAndFolderPicker(Widget):
+class MountAndFolderPicker(Screen[str]):
     class DirectoryPicked:
         def __init__(self, path):
             self.path = path
@@ -60,14 +61,6 @@ class MountAndFolderPicker(Widget):
                 SelectDirectory(location=accessible_root)
             )
             debug_log(f"Got Directory: {directory}")
-            self.on_folder_selected(directory)
+            self.dismiss(directory)
         except Exception as e:
             debug_log(f"Exception in on_mount_selected: {e}")
-
-    def on_folder_selected(self, path):
-        try:
-            debug_log(f"MountAndFolderPicker: Folder selected: {path}")
-            self.selected_path = str(path)
-            self.app.post_message(self.DirectoryPicked(self.selected_path))
-        except Exception as e:
-            debug_log(f"Exception in on_folder_selected: {e}")
