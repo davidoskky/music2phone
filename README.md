@@ -55,6 +55,12 @@ uvx git+https://github.com/davidoskky/music2phone
 
 To move use arrow up and down. Use tab to switch from one tab to the other and enter to sync/unsync an album.
 
+## Screenshots
+
+![Mount point selection](img/img1.png)
+![Folder selection](img/img2.png)
+![Main View](img/img3.png)
+
 ## License
 
 MIT License (see LICENSE file)
