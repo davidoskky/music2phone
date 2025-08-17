@@ -1,9 +1,18 @@
 [project]
-name = "phone-music"
+name = "music2phone"
 version = "0.1.0"
-description = "Add your description here"
+description = "Sync music from your computer to your phone using your Beets database and any mount method (KDE Connect, MTP, etc.)."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.8"
 dependencies = [
-    "textual>=5.3.0",
+    "psutil>=7.0.0",
+    "textual>=0.5.3",
+    "textual-fspicker>=0.0.11",
 ]
+license = { file = "LICENSE" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Linux",
+]
+

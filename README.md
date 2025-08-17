@@ -18,11 +18,15 @@ This tool is made for my own use case: I want an easy way to add albums on my ph
 - Works with any mount method (KDE Connect, MTP, etc.)
 - Simple configuration: just provide the mount location
 - Uses your Beets database to identify albums and tracks
+- **TUI folder picker**: interactively select your phone's music directory using a terminal UI (powered by [textual-fspicker](https://github.com/davep/textual-fspicker))
 
 ## Requirements
 
 - Python 3.8+
 - [Beets](https://beets.io/) (your music must be imported and managed with Beets)
+- [Textual](https://textual.textualize.io/) (for the TUI folder picker)
+- [psutil](https://pypi.org/project/psutil/) (for mount detection)
+- [textual-fspicker](https://github.com/davep/textual-fspicker) (for the TUI folder picker)
 - Your phone must be mounted (e.g., via KDE Connect, MTP, etc.)
 
 ## Installation
@@ -30,35 +34,19 @@ This tool is made for my own use case: I want an easy way to add albums on my ph
 ```bash
 git clone https://github.com/davidoskky/music2phone.git
 cd music2phone
-pip install -e .
+uv pip install -e .  # or your preferred uv command
 ```
 
 ## Usage
 
 1. Mount your phone using your preferred method (KDE Connect, MTP, etc.)
-2. Set the mount location and your music library root in `config.py` or a `.env` file:
+2. Run the tool:
+3. Select the phone mounting point from the list (select any if not in the list)
+4. Use the file picker to select the music folder on your phone
+5. Wait for the tool to load, it may take a few seconds
+6. Select the albums you want to move to your phone
 
-```env
-MUSIC_LIBRARY_ROOT=/home/youruser/Musica
-PHONE_MUSIC_DIR=/run/user/1000/your_mount_id/storage/emulated/0/Music/
-```
-
-3. Run the tool:
-
-```bash
-python -m music2phone
-```
-
-Or, if you set up a CLI entry point:
-
-```bash
-music2phone
-```
-
-## Customization
-
-- Tweak `config.py` or pass options via `.env`.
-- See code comments for extension points.
+To move use arrow up and down. Use tab to switch from one tab to the other and enter to sync/unsync an album.
 
 ## License
 
