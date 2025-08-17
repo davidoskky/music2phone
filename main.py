@@ -38,7 +38,7 @@ class MusicSyncApp(App):
 
     async def on_mount(self):
         self.library = core.get_library()
-        artists = list(self.library.keys())
+        artists = sorted(list(self.library.keys()))
         artists_list = self.query_one("#artists_list", ListView)
         for artist in artists:
             artists_list.append(ListItem(Label(artist)))
